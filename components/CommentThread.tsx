@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { useDemoMode } from '@/app/providers';
 import { CommentWithReplies } from '@/lib/types';
 import { formatRelativeTime } from '@/lib/utils';
 import { Avatar } from './Avatar';
+import { DEMO_USER } from '@/lib/mockData';
 
 interface CommentThreadProps {
   comments: CommentWithReplies[];
@@ -18,18 +20,59 @@ interface CommentThreadProps {
  */
 export function CommentThread({ comments, requestId, onCommentAdded }: CommentThreadProps) {
   const { data: session } = useSession();
+  const { isDemoMode } = useDemoMode();
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
+  const [localComments, setLocalComments] = useState<CommentWithReplies[]>(comments);
+
+  // In demo mode, allow actions without real session
+  const currentUser = isDemoMode ? DEMO_USER : session?.user;
+  const canInteract = isDemoMode || session?.user;
 
   const handleSubmitComment = async (parentId?: string) => {
     const content = parentId ? replyContent : newComment;
-    if (!content.trim() || !session?.user) return;
+    if (!content.trim() || !canInteract) return;
 
     setIsSubmitting(true);
+
+    // In demo mode, add comment locally
+    if (isDemoMode) {
+      const newCommentObj: CommentWithReplies = {
+        id: `demo-comment-${Date.now()}`,
+        content: content.trim(),
+        authorId: DEMO_USER.id,
+        authorName: DEMO_USER.name,
+        authorAvatar: DEMO_USER.image,
+        requestId,
+        parentId: parentId || null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        replies: [],
+      };
+
+      if (parentId) {
+        // Add as reply
+        setLocalComments(prev => prev.map(c => {
+          if (c.id === parentId) {
+            return { ...c, replies: [...(c.replies || []), newCommentObj] };
+          }
+          return c;
+        }));
+        setReplyContent('');
+        setReplyingTo(null);
+      } else {
+        // Add as top-level comment
+        setLocalComments(prev => [...prev, newCommentObj]);
+        setNewComment('');
+      }
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/requests/${requestId}/comments`, {
         method: 'POST',
@@ -93,8 +136,8 @@ export function CommentThread({ comments, requestId, onCommentAdded }: CommentTh
   };
 
   const renderComment = (comment: CommentWithReplies, isReply = false) => {
-    const isOwner = session?.user?.id === comment.authorId;
-    const canDelete = isOwner || session?.user?.isAdmin;
+    const isOwner = currentUser?.id === comment.authorId;
+    const canDelete = isOwner || (isDemoMode ? DEMO_USER.isAdmin : session?.user?.isAdmin);
     const isEditing = editingId === comment.id;
 
     return (
@@ -146,7 +189,7 @@ export function CommentThread({ comments, requestId, onCommentAdded }: CommentTh
               <>
                 <p className="text-text-secondary whitespace-pre-wrap">{comment.content}</p>
                 <div className="flex items-center gap-3 mt-2">
-                  {session?.user && !isReply && (
+                  {canInteract && !isReply && (
                     <button
                       onClick={() => {
                         setReplyingTo(comment.id);
@@ -221,7 +264,7 @@ export function CommentThread({ comments, requestId, onCommentAdded }: CommentTh
       <h3 className="text-lg font-semibold text-white">Comments</h3>
 
       {/* New comment form */}
-      {session?.user ? (
+      {canInteract ? (
         <div className="space-y-2">
           <textarea
             value={newComment}

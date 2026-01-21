@@ -9,6 +9,8 @@ import { StatusBadge } from './StatusBadge';
 import { VoteButton } from './VoteButton';
 import { Avatar } from './Avatar';
 import { CommentThread } from './CommentThread';
+import { useDemoMode } from '@/app/providers';
+import { getMockComments, DEMO_USER } from '@/lib/mockData';
 
 interface FeatureRequestDetailProps {
   request: FeatureRequestWithDetails;
@@ -21,10 +23,21 @@ interface FeatureRequestDetailProps {
  */
 export function FeatureRequestDetail({ request, onClose }: FeatureRequestDetailProps) {
   const { data: session } = useSession();
+  const { isDemoMode } = useDemoMode();
   const [comments, setComments] = useState<CommentWithReplies[]>([]);
   const [isLoadingComments, setIsLoadingComments] = useState(true);
 
+  // Check if current user is admin (works in demo mode too)
+  const isAdmin = isDemoMode ? DEMO_USER.isAdmin : session?.user?.isAdmin;
+
   const fetchComments = useCallback(async () => {
+    // In demo mode, use mock comments
+    if (isDemoMode) {
+      setComments(getMockComments(request.id));
+      setIsLoadingComments(false);
+      return;
+    }
+
     try {
       const response = await fetch(`/api/requests/${request.id}/comments`);
       if (response.ok) {
@@ -36,7 +49,7 @@ export function FeatureRequestDetail({ request, onClose }: FeatureRequestDetailP
     } finally {
       setIsLoadingComments(false);
     }
-  }, [request.id]);
+  }, [request.id, isDemoMode]);
 
   useEffect(() => {
     fetchComments();
@@ -152,7 +165,7 @@ export function FeatureRequestDetail({ request, onClose }: FeatureRequestDetailP
         </div>
 
         {/* Admin notes (only visible to admins) */}
-        {session?.user?.isAdmin && request.adminNotes && (
+        {isAdmin && request.adminNotes && (
           <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <svg className="w-5 h-5 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
