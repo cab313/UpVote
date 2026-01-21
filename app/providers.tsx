@@ -38,7 +38,9 @@ const DEMO_USER = {
 };
 
 export function Providers({ children }: ProvidersProps) {
-  const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true';
+  // Hardcoded to true for demo/showcase purposes
+  // Change to: process.env.NEXT_PUBLIC_DEMO_MODE === 'true' when integrating with real auth
+  const isDemoMode = true;
 
   // In demo mode, provide a mock session
   const mockSession = isDemoMode
