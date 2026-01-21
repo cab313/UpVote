@@ -9,13 +9,17 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: '#0a0a0a',
-        card: '#1a1a1a',
-        'card-hover': '#252525',
+        background: '#111111',
+        'background-secondary': '#1a1a1a',
+        card: '#1e1e1e',
+        'card-hover': '#282828',
         border: '#2a2a2a',
+        'border-dashed': '#3a3a3a',
         'text-primary': '#ffffff',
         'text-secondary': '#a1a1a1',
         'text-muted': '#6b7280',
+        accent: '#3b82f6',
+        'accent-hover': '#2563eb',
         status: {
           'under-review': '#f59e0b',
           planned: '#3b82f6',
